@@ -29,8 +29,8 @@ class ParticleCamFilter: MetalImageFilter
     let alignment:Int = 0x4000
     let particlesMemoryByteSize:Int
     
-    var particlesMemory:UnsafeMutablePointer<Void> = nil
-    let particlesVoidPtr: COpaquePointer
+    var particlesMemory:UnsafeMutableRawPointer? = nil
+    let particlesVoidPtr: OpaquePointer
     let particlesParticlePtr: UnsafeMutablePointer<Particle>
     let particlesParticleBufferPtr: UnsafeMutableBufferPointer<Particle>
     
@@ -38,23 +38,23 @@ class ParticleCamFilter: MetalImageFilter
     {
         [unowned self] in
         
-        return self.device.newBufferWithBytesNoCopy(self.particlesMemory,
+        return self.device.makeBuffer(bytesNoCopy: self.particlesMemory!,
             length: Int(self.particlesMemoryByteSize),
-            options: .CPUCacheModeDefaultCache,
+            options: .cpuCacheModeWriteCombined,
             deallocator: nil)
-    }()
+    }() as! MTLBuffer
     
-    let particleSize = sizeof(Particle)
+    let particleSize = MemoryLayout<Particle>.size
 
     // MARK: Initialisation
     
     init()
     {
-        particlesMemoryByteSize = particleCount * sizeof(Particle)
+        particlesMemoryByteSize = particleCount * MemoryLayout<Particle>.size
         
         posix_memalign(&particlesMemory, alignment, particlesMemoryByteSize)
-        
-        particlesVoidPtr = COpaquePointer(particlesMemory)
+
+        particlesVoidPtr = OpaquePointer(particlesMemory!)
         particlesParticlePtr = UnsafeMutablePointer<Particle>(particlesVoidPtr)
         particlesParticleBufferPtr = UnsafeMutableBufferPointer(start: particlesParticlePtr, count: particleCount)
         

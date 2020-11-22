@@ -12,7 +12,7 @@ class ViewController: UIViewController, CameraCaptureHelperDelegate
 {
     let imageView = MetalImageView()
     
-    let cameraCaptureHelper = CameraCaptureHelper(cameraPosition: .Front)
+    let cameraCaptureHelper = CameraCaptureHelper(cameraPosition: .front)
     
     let particleCamFilter = ParticleCamFilter()
 
@@ -21,7 +21,7 @@ class ViewController: UIViewController, CameraCaptureHelperDelegate
         super.viewDidLoad()
         
         view.addSubview(imageView)
-        
+        imageView.backgroundColor = .red
         cameraCaptureHelper.delegate = self
     }
     

@@ -20,11 +20,11 @@ import UIKit
 class CameraCaptureHelper: NSObject
 {
     let captureSession = AVCaptureSession()
-    let cameraPosition: AVCaptureDevicePosition
+    let cameraPosition: AVCaptureDevice.Position
     
     weak var delegate: CameraCaptureHelperDelegate?
     
-    required init(cameraPosition: AVCaptureDevicePosition)
+    required init(cameraPosition: AVCaptureDevice.Position)
     {
         self.cameraPosition = cameraPosition
         
@@ -35,9 +35,14 @@ class CameraCaptureHelper: NSObject
     
     private func initialiseCaptureSession()
     {
-        captureSession.sessionPreset = AVCaptureSessionPresetiFrame1280x720
+        captureSession.beginConfiguration()
+        captureSession.sessionPreset = AVCaptureSession.Preset.iFrame1280x720
+        let devices = AVCaptureDevice.DiscoverySession(deviceTypes: [AVCaptureDevice.DeviceType.builtInWideAngleCamera],
+                                                      mediaType: .video,
+                                                      position: cameraPosition)
+            
         
-        guard let camera = (AVCaptureDevice.devicesWithMediaType(AVMediaTypeVideo) as! [AVCaptureDevice])
+        guard let camera = devices.devices
             .filter({ $0.position == cameraPosition })
             .first else
         {
@@ -47,7 +52,6 @@ class CameraCaptureHelper: NSObject
         do
         {
             let input = try AVCaptureDeviceInput(device: camera)
-            
             captureSession.addInput(input)
         }
         catch
@@ -57,35 +61,39 @@ class CameraCaptureHelper: NSObject
         
         let videoOutput = AVCaptureVideoDataOutput()
         
-        videoOutput.setSampleBufferDelegate(self,
-            queue: dispatch_queue_create("sample buffer delegate", DISPATCH_QUEUE_SERIAL))
+        videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "sample buffer delegate"))
         
         if captureSession.canAddOutput(videoOutput)
         {
             captureSession.addOutput(videoOutput)
         }
         
+        captureSession.commitConfiguration()
         captureSession.startRunning()
     }
 }
 
 extension CameraCaptureHelper: AVCaptureVideoDataOutputSampleBufferDelegate
 {
-    func captureOutput(captureOutput: AVCaptureOutput!, didOutputSampleBuffer sampleBuffer: CMSampleBuffer!, fromConnection connection: AVCaptureConnection!)
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection)
     {
-        connection.videoOrientation = AVCaptureVideoOrientation(rawValue: UIApplication.sharedApplication().statusBarOrientation.rawValue)!
+        print("didOutput")
+//        connection.videoOrientation = AVCaptureVideoOrientation(rawValue: UIApplication.shared.statusBarOrientation.rawValue)!
         
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else
         {
             return
         }
         
-        dispatch_async(dispatch_get_main_queue())
-            {
-                self.delegate?.newCameraImage(self,
-                    image: CIImage(CVPixelBuffer: pixelBuffer))
+        DispatchQueue.main.async {
+            self.delegate?.newCameraImage(cameraCaptureHelper: self,
+                                          image: CIImage(cvPixelBuffer: pixelBuffer))
         }
         
+    }
+    
+     func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+       print("didDrop")
     }
 }
 
